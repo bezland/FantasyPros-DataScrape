@@ -9,7 +9,7 @@ weeks = range(1,18)
 years = ["2013","2014","2015","2016","2017","2018","2019"]
 
 #setting up headers
-qb_headers= ["Rank", "Player", "Cmp", "Pa-Att", "Pa-Pct", "Pa-Yds", "Pa-Y/A", "Pa-TD", "Int", "Sacks", "Ru-Att", "Ru-Yds", "Ru-TD", "Fum", "Games", "FPts", "FPts/G", "Own"]
+qb_headers= ["Week", "Opp", "Score", "QB Rat", "Cmp", "Pa-Att", "Pa-Pct", "Pa-Yds", "Pa-Y/A", "Pa-TD", "Int", "Sacks", "Ru-Att", "Ru-Yds", "Ru-Y/A", "Ru-Lg", "Ru-TD", "Fum", "FumL"]
 rb_headers= ["Rank", "Player", "Ru-Att", "Ru-Yds", "Ru-Y/A", "Ru-20+", "Ru-TD", "Rec", "Tgt", "Re-Yds", "Re-Y/R", "Re-TD", "Fum", "Games", "FPts", "FPts/G", "Own"]
 wr_headers= ["Rank", "Player", "Rec", "Tgt", "Re-Yds", "Re-Y/R", "Re-LG", "Re-20+", "Re-TD", "Ru-Att", "Ru-Yds", "Ru-TD",  "Fum", "Games", "FPts", "FPts/G", "Own"]
 te_headers= ["Rank", "Player", "Rec", "Tgt", "Re-Yds", "Re-Y/R", "Re-LG", "Re-20+", "Re-TD", "Ru-Att", "Ru-Yds", "Ru-TD",  "Fum", "Games", "FPts", "FPts/G", "Own"]
@@ -57,9 +57,16 @@ all_stats = []
 for stat in all_stats_raw:
     all_stats.append(stat.get_text())
 
-stats_trimmed = [all_stats[i:i + 19] for i in range(0, len(all_stats), 19)]
+print(all_stats)
 
-print(stats_trimmed)
+stats_table_dict = {}
+
+for header in qb_headers:
+    stats_table_dict[header] = all_stats[qb_headers.index(header)::len(qb_headers)]
+
+#print(stats_table_dict)
+
+#print(stats_trimmed)
 
 
 
