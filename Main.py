@@ -30,6 +30,7 @@ for position in positions:
 #getting data out of the table
 #setting up nested dictionaries
 data = {}
+
 for position in positions:
     player_names = []
     player_links = []
@@ -191,7 +192,7 @@ for position in positions:
     data[position] = dict(zip(player_names, player_links))
 
 
-    for link in player_links:
+    for link in player_links[0:2]:
         print(link)
         page = requests.get("https://www.fantasypros.com/nfl/games/%s.php?season=2019" % link)
 
@@ -219,4 +220,23 @@ for position in positions:
             stats_table_dict[header] = all_stats[headers[position].index(header)::len(headers[position])]
 
         stats_table = pd.DataFrame(stats_table_dict)
+
+        stats_table["Week"] = stats_table["Week"].str.split(" ").str[1]
+        stats_table[["H/A", "Opp"]] = stats_table["Opp"].str.split(" ",expand=True)
+        stats_table[["Result", "Score"]] = stats_table["Score"].str.split(", ",expand=True)
+        #stats_table[["H-Score", "A-Score"]] = stats_table["Score"].str.split("-",expand=True)
+        stats_table["year"] = year
+
+        for i in range(len(stats_table["Week"])):
+          if stats_table.loc[i, "H/A"] == "@":
+            stats_table.loc[i,"H/A"] = "Away"
+          else:
+            stats_table.loc[i,"H/A"] = "Home"
+
+
+
+        if position == "qb":
+          stats_table = stats_table[["Year", "Week", "H/A", "Opp", "Result", "Score", "QB Rat", "Cmp", "Pa-Att", "Pa-Pct", "Pa-Yds", "Pa-Y/A", "Pa-TD", "Int", "Sacks", "Ru-Att", "Ru-Yds", "Ru-Y/A", "Ru-Lg", "Ru-TD", "Fum", "FumL"]]
+        
+        
         print(stats_table)
