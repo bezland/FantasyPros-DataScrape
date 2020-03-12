@@ -30,6 +30,7 @@ for position in positions:
 #getting data out of the table
 #setting up nested dictionaries
 data = {}
+player_guide = {}
 
 for position in positions:
     player_names = []
@@ -62,7 +63,7 @@ for position in positions:
             if "david-johnson" in player_links:
                 player_links[player_links.index("david-johnson")] = "david-johnson-rb"
             if "benny-snell" in player_links:
-                player_links[player_links.index("benny-snell")] = "benny-snell-jr"
+                player_links[player_links.index("benny-snell")] = "benjamin-snell-jr"
             if "jeff-wilson" in player_links:
                 player_links[player_links.index("jeff-wilson")] = "jeffery-wilson"
             if "justin-jackson" in player_links:
@@ -190,11 +191,14 @@ for position in positions:
         del player_links[player_links.index("clark-harris")]
 
     data[position] = dict(zip(player_names, player_links))
+    
+    player_guide[position] = dict(zip(player_links, player_names))
 
-
-    for link in player_links[0:2]:
+    for link in player_links:
+      stats_table = pd.DataFrame()
+      for year in years:
         print(link)
-        page = requests.get("https://www.fantasypros.com/nfl/games/%s.php?season=2019" % link)
+        page = requests.get("https://www.fantasypros.com/nfl/games/%s.php?season=%s" % (link, year))
 
         soup = BeautifulSoup(page.content, "html.parser")
 
@@ -213,30 +217,32 @@ for position in positions:
             del all_stats[del_loc-1]
 
         del all_stats[-len(headers[position]):]
-
-        stats_table_dict = {}
-
-        for header in headers[position]:
-            stats_table_dict[header] = all_stats[headers[position].index(header)::len(headers[position])]
-
-        stats_table = pd.DataFrame(stats_table_dict)
-
-        stats_table["Week"] = stats_table["Week"].str.split(" ").str[1]
-        stats_table[["H/A", "Opp"]] = stats_table["Opp"].str.split(" ",expand=True)
-        stats_table[["Result", "Score"]] = stats_table["Score"].str.split(", ",expand=True)
-        #stats_table[["H-Score", "A-Score"]] = stats_table["Score"].str.split("-",expand=True)
-        stats_table["year"] = year
-
-        for i in range(len(stats_table["Week"])):
-          if stats_table.loc[i, "H/A"] == "@":
-            stats_table.loc[i,"H/A"] = "Away"
-          else:
-            stats_table.loc[i,"H/A"] = "Home"
-
-
-
-        if position == "qb":
-          stats_table = stats_table[["Year", "Week", "H/A", "Opp", "Result", "Score", "QB Rat", "Cmp", "Pa-Att", "Pa-Pct", "Pa-Yds", "Pa-Y/A", "Pa-TD", "Int", "Sacks", "Ru-Att", "Ru-Yds", "Ru-Y/A", "Ru-Lg", "Ru-TD", "Fum", "FumL"]]
         
-        
-        print(stats_table)
+        if len(all_stats) != 0:
+
+          stats_table_dict = {}
+
+          for header in headers[position]:
+              stats_table_dict[header] = all_stats[headers[position].index(header)::len(headers[position])]
+          stats_table_dict["Year"] = [year]*(len(stats_table_dict["Week"]))
+
+          stats_table_temp = pd.DataFrame(stats_table_dict)
+
+          stats_table_temp["Week"] = stats_table_temp["Week"].str.split(" ").str[1]
+          stats_table_temp[["H/A", "Opp"]] = stats_table_temp["Opp"].str.split(" ",expand=True)
+          stats_table_temp[["Result", "Score"]] = stats_table_temp["Score"].str.split(", ",expand=True)
+          
+          for i in range(len(stats_table_temp["Week"])):
+            if stats_table_temp.loc[i, "H/A"] == "@":
+              stats_table_temp.loc[i,"H/A"] = "Away"
+            else:
+              stats_table_temp.loc[i,"H/A"] = "Home"
+
+          if position == "qb":
+            stats_table_temp = stats_table_temp[["Year", "Week", "H/A", "Opp", "Result", "Score", "QB Rat", "Cmp", "Pa-Att", "Pa-Pct", "Pa-Yds", "Pa-Y/A", "Pa-TD", "Int", "Sacks", "Ru-Att", "Ru-Yds", "Ru-Y/A", "Ru-Lg", "Ru-TD", "Fum", "FumL"]]
+          print(stats_table_temp)
+          stats_table = stats_table.append(stats_table_temp)
+          #print(stats_table)
+      data[position][player_guide[position][link]] = stats_table
+      
+    print(data[position])
