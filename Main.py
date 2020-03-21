@@ -189,6 +189,10 @@ for position in positions:
         del player_links[player_links.index("kevin-mcdermott")]
     if "clark-harris" in player_links:
         del player_links[player_links.index("clark-harris")]
+    if "dillon-gordon" in player_links:
+        del player_links[player_links.index("dillon-gordon")]
+    if "james-franklin" in player_links:
+        del player_links[player_links.index("james-franklin")]
 
     data[position] = dict(zip(player_names, player_links))
     
@@ -234,12 +238,13 @@ for position in positions:
           
           for i in range(len(stats_table_temp["Week"])):
             if stats_table_temp.loc[i, "H/A"] == "@":
-              stats_table_temp.loc[i,"H/A"] = "Away"
+                stats_table_temp.loc[i,"H/A"] = "Away"
             else:
-              stats_table_temp.loc[i,"H/A"] = "Home"
+                stats_table_temp.loc[i,"H/A"] = "Home"
 
-          if position == "qb":
-            stats_table_temp = stats_table_temp[["Year", "Week", "H/A", "Opp", "Result", "Score", "QB Rat", "Cmp", "Pa-Att", "Pa-Pct", "Pa-Yds", "Pa-Y/A", "Pa-TD", "Int", "Sacks", "Ru-Att", "Ru-Yds", "Ru-Y/A", "Ru-Lg", "Ru-TD", "Fum", "FumL"]]
+            #setting up headers
+            if position == "qb":
+                stats_table_temp = stats_table_temp[["Year", "Week", "H/A", "Opp", "Result", "Score", "QB Rat", "Cmp", "Pa-Att", "Pa-Pct", "Pa-Yds", "Pa-Y/A", "Pa-TD", "Int", "Sacks", "Ru-Att", "Ru-Yds", "Ru-Y/A", "Ru-Lg", "Ru-TD", "Fum", "FumL"]]
           print(stats_table_temp)
           stats_table = stats_table.append(stats_table_temp)
           #print(stats_table)
