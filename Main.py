@@ -2,11 +2,13 @@ import numpy as np
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+import pickle
 
 #Setting up page grab basics
 positions = ["qb", "rb", "wr", "te"]
 weeks = range(1,18)
 years = ["2013","2014","2015","2016","2017","2018","2019"]
+player_numbers = {"qb":75, "rb":200, "wr":200, "te":75}
 
 #setting up headers
 headers = {"qb" : ["Week", "Opp", "Score", "QB Rat", "Cmp", "Pa-Att", "Pa-Pct", "Pa-Yds", "Pa-Y/A", "Pa-TD", "Int", "Sacks", "Ru-Att", "Ru-Yds", "Ru-Y/A", "Ru-Lg", "Ru-TD", "Fum", "FumL"],
@@ -24,13 +26,21 @@ for position in positions:
     soup = BeautifulSoup(page.content, "html.parser")
 
     player_list = [player.get_text() for player in soup.find_all("td", class_ = "player-label")]
+    print(player_list)
 
-    player_lists[position] = player_list
+    if position == "rb":
+        player_list.remove('Patrick Ricard (BAL) ')
+
+    player_lists[position] = player_list[0:player_numbers[position]]
+    print(position, player_lists[position])
+
+#player_lists.to_csv("p_lists.csv"")
 
 #getting data out of the table
 #setting up nested dictionaries
 data = {}
 player_guide = {}
+player_export = {}
 
 for position in positions:
     player_names = []
@@ -173,81 +183,250 @@ for position in positions:
             if "j.p.-foschi" in player_links:
                 player_links[player_links.index("j.p.-foschi")] = "jp-foschi"
 
-    if "patrick-ricard" in player_links:
-        del player_links[player_links.index("patrick-ricard")]
-    if "nick-bellore" in player_links:
-        del player_links[player_links.index("nick-bellore")]
-    if "rico-gafford" in player_links:
-        del player_links[player_links.index("rico-gafford")]
-    if "patrick-scales" in player_links:
-        del player_links[player_links.index("patrick-scales")]
-    if "james-winchester" in player_links:
-        del player_links[player_links.index("james-winchester")]
-    if "tyler-ott" in player_links:
-        del player_links[player_links.index("tyler-ott")]
-    if "kevin-mcdermott" in player_links:
-        del player_links[player_links.index("kevin-mcdermott")]
-    if "clark-harris" in player_links:
-        del player_links[player_links.index("clark-harris")]
-    if "dillon-gordon" in player_links:
-        del player_links[player_links.index("dillon-gordon")]
-    if "james-franklin" in player_links:
-        del player_links[player_links.index("james-franklin")]
+    #if "patrick-ricard" in player_links:
+        #del player_links[player_links.index("patrick-ricard")]
 
     data[position] = dict(zip(player_names, player_links))
     
     player_guide[position] = dict(zip(player_links, player_names))
 
-    for link in player_links:
-      stats_table = pd.DataFrame()
-      for year in years:
-        print(link)
-        page = requests.get("https://www.fantasypros.com/nfl/games/%s.php?season=%s" % (link, year))
+    player_export[position] = player_names
 
-        soup = BeautifulSoup(page.content, "html.parser")
+    if position == "qb":
+        #for link in player_links[0:75]:
+        for link in player_links:
+          stats_table = pd.DataFrame()
+          for year in years:
+            print(link)
+            page = requests.get("https://www.fantasypros.com/nfl/games/%s.php?season=%s" % (link, year))
 
-        stats = soup.find_all("td")
+            soup = BeautifulSoup(page.content, "html.parser")
 
-        all_stats_raw = list(stats)
+            stats = soup.find_all("td")
 
-        all_stats = []
+            all_stats_raw = list(stats)
 
-        for stat in all_stats_raw:
-            all_stats.append(stat.get_text())
+            all_stats = []
 
-        while "BYE Week" in all_stats:
-            del_loc = all_stats.index("BYE Week")
-            del all_stats[del_loc]
-            del all_stats[del_loc-1]
+            for stat in all_stats_raw:
+                all_stats.append(stat.get_text())
 
-        del all_stats[-len(headers[position]):]
-        
-        if len(all_stats) != 0:
+            while "BYE Week" in all_stats:
+                del_loc = all_stats.index("BYE Week")
+                del all_stats[del_loc]
+                del all_stats[del_loc-1]
 
-          stats_table_dict = {}
+            del all_stats[-len(headers[position]):]
 
-          for header in headers[position]:
-              stats_table_dict[header] = all_stats[headers[position].index(header)::len(headers[position])]
-          stats_table_dict["Year"] = [year]*(len(stats_table_dict["Week"]))
+            if len(all_stats) != 0:
 
-          stats_table_temp = pd.DataFrame(stats_table_dict)
+              stats_table_dict = {}
 
-          stats_table_temp["Week"] = stats_table_temp["Week"].str.split(" ").str[1]
-          stats_table_temp[["H/A", "Opp"]] = stats_table_temp["Opp"].str.split(" ",expand=True)
-          stats_table_temp[["Result", "Score"]] = stats_table_temp["Score"].str.split(", ",expand=True)
-          
-          for i in range(len(stats_table_temp["Week"])):
-            if stats_table_temp.loc[i, "H/A"] == "@":
-                stats_table_temp.loc[i,"H/A"] = "Away"
-            else:
-                stats_table_temp.loc[i,"H/A"] = "Home"
+              for header in headers[position]:
+                  stats_table_dict[header] = all_stats[headers[position].index(header)::len(headers[position])]
+              stats_table_dict["Year"] = [year]*(len(stats_table_dict["Week"]))
 
-            #setting up headers
-            if position == "qb":
+              stats_table_temp = pd.DataFrame(stats_table_dict)
+
+              stats_table_temp["Week"] = stats_table_temp["Week"].str.split(" ").str[1]
+              stats_table_temp[["H/A", "Opp"]] = stats_table_temp["Opp"].str.split(" ",expand=True)
+              stats_table_temp[["Result", "Score"]] = stats_table_temp["Score"].str.split(", ",expand=True)
+
+              for i in range(len(stats_table_temp["Week"])):
+                if stats_table_temp.loc[i, "H/A"] == "@":
+                    stats_table_temp.loc[i,"H/A"] = "Away"
+                else:
+                    stats_table_temp.loc[i,"H/A"] = "Home"
+
+                #setting up headers
                 stats_table_temp = stats_table_temp[["Year", "Week", "H/A", "Opp", "Result", "Score", "QB Rat", "Cmp", "Pa-Att", "Pa-Pct", "Pa-Yds", "Pa-Y/A", "Pa-TD", "Int", "Sacks", "Ru-Att", "Ru-Yds", "Ru-Y/A", "Ru-Lg", "Ru-TD", "Fum", "FumL"]]
-          print(stats_table_temp)
-          stats_table = stats_table.append(stats_table_temp)
-          #print(stats_table)
-      data[position][player_guide[position][link]] = stats_table
-      
+
+              stats_table = stats_table.append(stats_table_temp)
+
+          data[position][player_guide[position][link]] = stats_table
+
+    if position == "rb":
+        for link in player_links[0:200]:
+          stats_table = pd.DataFrame()
+          for year in years:
+            print(link)
+
+            if link == "ryquell-armstead" and year == "2016":
+                continue
+
+            page = requests.get("https://www.fantasypros.com/nfl/games/%s.php?season=%s" % (link, year))
+
+            soup = BeautifulSoup(page.content, "html.parser")
+
+            stats = soup.find_all("td")
+
+            all_stats_raw = list(stats)
+
+            all_stats = []
+
+            for stat in all_stats_raw:
+                all_stats.append(stat.get_text())
+
+
+            while "BYE Week" in all_stats:
+                del_loc = all_stats.index("BYE Week")
+                del all_stats[del_loc]
+                del all_stats[del_loc-1]
+
+            del all_stats[-len(headers[position]):]
+
+            if len(all_stats) != 0:
+
+              stats_table_dict = {}
+
+              for header in headers[position]:
+                  stats_table_dict[header] = all_stats[headers[position].index(header)::len(headers[position])]
+              stats_table_dict["Year"] = [year]*(len(stats_table_dict["Week"]))
+
+              stats_table_temp = pd.DataFrame(stats_table_dict)
+
+              stats_table_temp["Week"] = stats_table_temp["Week"].str.split(" ").str[1]
+              stats_table_temp[["H/A", "Opp"]] = stats_table_temp["Opp"].str.split(" ",expand=True)
+              stats_table_temp[["Result", "Score"]] = stats_table_temp["Score"].str.split(", ",expand=True)
+
+              for i in range(len(stats_table_temp["Week"])):
+                if stats_table_temp.loc[i, "H/A"] == "@":
+                    stats_table_temp.loc[i,"H/A"] = "Away"
+                else:
+                    stats_table_temp.loc[i,"H/A"] = "Home"
+
+                #setting up headers
+
+                stats_table_temp = stats_table_temp[["Year", "Week", "H/A", "Opp", "Result", "Score", "Ru-Att", "Ru-Yds", "Ru-Y/A", "Ru-Lg", "Ru-TD", "Rec", "Tgt", "Re-Yds", "Re-Y/R", "Re-Lg", "Re-TD", "Fum", "FumL"]]
+
+              stats_table = stats_table.append(stats_table_temp)
+
+          data[position][player_guide[position][link]] = stats_table
+
+    if position == "wr":
+        for link in player_links[0:200]:
+          stats_table = pd.DataFrame()
+          for year in years:
+            print(link)
+
+            if link == "khadarel-hodge" and year == "2018":
+                continue
+
+            page = requests.get("https://www.fantasypros.com/nfl/games/%s.php?season=%s" % (link, year))
+
+            soup = BeautifulSoup(page.content, "html.parser")
+
+            stats = soup.find_all("td")
+
+            all_stats_raw = list(stats)
+
+            all_stats = []
+
+            for stat in all_stats_raw:
+                all_stats.append(stat.get_text())
+
+
+            while "BYE Week" in all_stats:
+                del_loc = all_stats.index("BYE Week")
+                del all_stats[del_loc]
+                del all_stats[del_loc-1]
+
+            del all_stats[-len(headers[position]):]
+
+            if len(all_stats) != 0:
+
+              stats_table_dict = {}
+
+              for header in headers[position]:
+                  stats_table_dict[header] = all_stats[headers[position].index(header)::len(headers[position])]
+              stats_table_dict["Year"] = [year]*(len(stats_table_dict["Week"]))
+
+              stats_table_temp = pd.DataFrame(stats_table_dict)
+
+              stats_table_temp["Week"] = stats_table_temp["Week"].str.split(" ").str[1]
+              stats_table_temp[["H/A", "Opp"]] = stats_table_temp["Opp"].str.split(" ",expand=True)
+              stats_table_temp[["Result", "Score"]] = stats_table_temp["Score"].str.split(", ",expand=True)
+
+              for i in range(len(stats_table_temp["Week"])):
+                if stats_table_temp.loc[i, "H/A"] == "@":
+                    stats_table_temp.loc[i,"H/A"] = "Away"
+                else:
+                    stats_table_temp.loc[i,"H/A"] = "Home"
+
+                #setting up headers
+
+                stats_table_temp = stats_table_temp[["Year", "Week", "H/A", "Opp", "Result", "Score", "Rec", "Tgt", "Re-Yds", "Re-Y/R", "Re-LG", "Re-TD", "Ru-Att", "Ru-Yds", "Ru-Y/A", "Ru-Lg", "Ru-TD",  "Fum", "FumL"]]
+
+              stats_table = stats_table.append(stats_table_temp)
+
+          data[position][player_guide[position][link]] = stats_table
+
+    if position == "te":
+        for link in player_links[0:75]:
+          stats_table = pd.DataFrame()
+          for year in years:
+            print(link)
+
+            page = requests.get("https://www.fantasypros.com/nfl/games/%s.php?season=%s" % (link, year))
+
+            soup = BeautifulSoup(page.content, "html.parser")
+
+            stats = soup.find_all("td")
+
+            all_stats_raw = list(stats)
+
+            all_stats = []
+
+            for stat in all_stats_raw:
+                all_stats.append(stat.get_text())
+
+
+            while "BYE Week" in all_stats:
+                del_loc = all_stats.index("BYE Week")
+                del all_stats[del_loc]
+                del all_stats[del_loc-1]
+
+            del all_stats[-len(headers[position]):]
+
+            if len(all_stats) != 0:
+
+              stats_table_dict = {}
+
+              for header in headers[position]:
+                  stats_table_dict[header] = all_stats[headers[position].index(header)::len(headers[position])]
+              stats_table_dict["Year"] = [year]*(len(stats_table_dict["Week"]))
+
+              stats_table_temp = pd.DataFrame(stats_table_dict)
+
+              stats_table_temp["Week"] = stats_table_temp["Week"].str.split(" ").str[1]
+              stats_table_temp[["H/A", "Opp"]] = stats_table_temp["Opp"].str.split(" ",expand=True)
+              stats_table_temp[["Result", "Score"]] = stats_table_temp["Score"].str.split(", ",expand=True)
+
+              for i in range(len(stats_table_temp["Week"])):
+                if stats_table_temp.loc[i, "H/A"] == "@":
+                    stats_table_temp.loc[i,"H/A"] = "Away"
+                else:
+                    stats_table_temp.loc[i,"H/A"] = "Home"
+
+                #setting up headers
+
+                stats_table_temp = stats_table_temp[["Year", "Week", "H/A", "Opp", "Result", "Score", "Rec", "Tgt", "Re-Yds", "Re-Y/R", "Re-LG", "Re-TD", "Ru-Att", "Ru-Yds", "Yu-Y/A", "Ru-Lg", "Ru-TD",  "Fum", "FumL"]]
+
+              stats_table = stats_table.append(stats_table_temp)
+
+          data[position][player_guide[position][link]] = stats_table
+
     print(data[position])
+
+    for player in player_names:
+        data[position][player].to_csv(r"E:\TheFantasyBrit\Python programs\Data Collection\Historic NFL Data\Data Harvesting\FantasyPros-DataScrape\%s\%s.csv" % (position, player))
+
+filename = 'data'
+outfile = open(filename,'wb')
+pickle.dump(data, outfile)
+outfile.close()
+
+filename = 'players'
+outfile = open(filename,'wb')
+pickle.dump(player_export, outfile)
+outfile.close()
